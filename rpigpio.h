@@ -6,19 +6,21 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define PERIPHERALS_BASE 0x3F000000
-#define GPIO_BASE        (PERIPHERALS_BASE + 0x00200000)
-#define BLOCK_SIZE       (4 * 1024)
+#define BLOCK_SIZE           (4 * 1024)
+#define PERIPHERAL_BASE_ADDR 0x3F000000
+#define GPIO_BASE_ADDR       (PERIPHERAL_BASE_ADDR + 0x00200000)
 
-struct bcm2835_peripheral {
-  unsigned long         addr_p;
-  int                   mem_fd;
+typedef struct {
+  unsigned long         gpio_base_addr;
+  int                   memory_fd;
   void                  *map;
   volatile unsigned int *addr;
-};
+} rpi_gpio;
 
-int UnmapPeripherals(struct bcm2835_peripheral *p);
-int MapPeripherals(struct bcm2835_peripheral *p);
-int BlinkLED(void);
+int SetupGPIO(rpi_gpio *gpio);
+int ClearGPIO(rpi_gpio *gpio);
+int unmapGPIO(rpi_gpio *gpio);
+int   mapGPIO(rpi_gpio *gpio);
+int BlinkLED(rpi_gpio *gpio);
 
 #endif

@@ -1,65 +1,74 @@
 #include "rpigpio.h"
 
-int BlinkLED() {
-  int n = 5;
-  struct bcm2835_peripheral gpio = {GPIO_BASE};
+int SetupGPIO(rpi_gpio *gpio) {
+  int is_mapped;
 
-  if(MapPeripherals(&gpio)) {
-    return 1;
+  gpio->gpio_base_addr = GPIO_BASE_ADDR;
+
+  is_mapped = mapGPIO(gpio);
+
+  if(is_mapped) {
+    return is_mapped;
   }
 
-  /* Init GPIO23 */
-  *(gpio.addr + 2)  = 0x00000200;
+  return 0;
+}
+int BlinkLED(rpi_gpio *gpio) {
+  int n = 5;
+
+  *(gpio->addr + 2)  = 0x00000200;
 
   while(n) {
-    *(gpio.addr + 7)  = 0x00800000;
+    *(gpio->addr + 7)  = 0x00800000;
     usleep(500000);
-    *(gpio.addr + 10) = 0x00800000;
+    *(gpio->addr + 10) = 0x00800000;
     usleep(500000);
 
     n -= 1;
   }
 
-  /* cleanup */
-  *(gpio.addr + 10) = 0x00800000;
-  *(gpio.addr + 2)  = 0x00000000;
+  return 0;
+}
 
-  UnmapPeripherals(&gpio);
-  printf("ok\n");
+int ClearGPIO(rpi_gpio *gpio) {
+  *(gpio->addr + 10) = 0x00800000;
+  *(gpio->addr + 2)  = 0x00000000;
+
+  unmapGPIO(gpio);
 
   return 0;
 }
 
-int MapPeripherals(struct bcm2835_peripheral *p) {
-  p->mem_fd = open("/dev/mem", O_RDWR|O_SYNC);
+int mapGPIO(rpi_gpio *gpio) {
+  gpio->memory_fd = open("/dev/mem", O_RDWR|O_SYNC);
 
-  if(p->mem_fd < 0) {
-    printf("Failed to open /dev/mem, try checking permissions.\n");
+  if(gpio->memory_fd < 0) {
+    perror("Failed to open /dev/mem\n");
     return 1;
   }
 
-  p->map = mmap(
+  gpio->map = mmap(
     NULL,
     BLOCK_SIZE,
     PROT_READ|PROT_WRITE,
     MAP_SHARED,
-    p->mem_fd,
-    p->addr_p
+    gpio->memory_fd,
+    gpio->gpio_base_addr
   );
 
-  if(p->map == MAP_FAILED) {
+  if(gpio->map == MAP_FAILED) {
     perror("mmap");
     return 1;
   }
 
-  p->addr = (volatile unsigned int *)p->map;
+  gpio->addr = (volatile unsigned int *)gpio->map;
 
   return 0;
 }
 
-int UnmapPeripherals(struct bcm2835_peripheral *p) {
-  munmap(p->map, BLOCK_SIZE);
-  close(p->mem_fd);
+int unmapGPIO(rpi_gpio *gpio) {
+  munmap(gpio->map, BLOCK_SIZE);
+  close(gpio->memory_fd);
 
   return 0;
 }
